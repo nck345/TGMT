@@ -14,7 +14,7 @@ from skimage import measure
 
 from loader.dataset_doc3d_grid_HV import gradient
 
-os.environ['CUDA_VISIBLE_DEVICES'] = '3'
+device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 import torch
 import torch.nn.functional as F
 from networks.d2dewarp_model import D2DewarpModel
@@ -38,11 +38,11 @@ def get_args():
     parser = argparse.ArgumentParser()
     parser.add_argument('--input_size', default=448, help='image size')
     parser.add_argument('--model_path',
-                        default='/D2Dewarp/model_weight.pt',
+                        default='./model_weight.pt',
                         help='model path')
-    parser.add_argument('--img_path', default='/dataset/Dewarp/DocUNet_dataset/crop/',
+    parser.add_argument('--img_path', default='c:/Users/khiem_ssxdm6v/Documents/GitHub/DocTr-Plus/data benchmark/crop/crop',
                         help='image path or path to folder containing images (set multi as true)')
-    parser.add_argument('--save_path', default='/D2Dewarp/infer/DocUNet', help='save path')
+    parser.add_argument('--save_path', default='./infer/DocUNet', help='save path')
 
     """ Model """
     parser.add_argument('--hv_out_chans', type=int, default=1, help='h line and v line output channels')
@@ -56,9 +56,16 @@ parser = get_args()
 recti_model = D2DewarpModel(img_size=parser.input_size, in_chans=parser.in_chans, hv_out_chans=parser.hv_out_chans,
                             d_model=parser.d_model)
 
-recti_model = torch.nn.DataParallel(recti_model).cuda()
-state_dict = torch.load(parser.model_path)
-recti_model.load_state_dict(state_dict['state_dict'])
+if torch.cuda.is_available():
+    recti_model = torch.nn.DataParallel(recti_model).cuda()
+    state_dict = torch.load(parser.model_path, weights_only=False)
+    recti_model.load_state_dict(state_dict['state_dict'])
+else:
+    state_dict = torch.load(parser.model_path, map_location='cpu', weights_only=False)
+    sd = state_dict['state_dict'] if 'state_dict' in state_dict else state_dict
+    new_sd = {k[7:] if k.startswith('module.') else k: v for k, v in sd.items()}
+    recti_model.load_state_dict(new_sd)
+    recti_model = recti_model.to(device)
 print(f'model loaded')
 
 
@@ -89,9 +96,9 @@ def predict(img_path, save_path, filename):
     recti_model.eval()
 
     with torch.no_grad():
-        input_ = torch.from_numpy(input).permute(2, 0, 1).cuda()
+        input_ = torch.from_numpy(input).permute(2, 0, 1).to(device)
         input_ = input_.unsqueeze(0)
-        edge = torch.from_numpy(edge).unsqueeze(0).unsqueeze(0).cuda()
+        edge = torch.from_numpy(edge).unsqueeze(0).unsqueeze(0).to(device)
         start = time.time()
         pred_h_lst, pred_v_lst, pred_bm = recti_model(torch.cat((input_.float(), edge.float()), dim=1))
         bm = (2. * (pred_bm / (parser.input_size)) - 1) * 1.004
@@ -107,22 +114,23 @@ def predict(img_path, save_path, filename):
     bm1 = cv2.blur(bm1, (3, 3))
     lbl = torch.from_numpy(np.stack([bm0, bm1], axis=2)).unsqueeze(0)  # h * w * 2
 
-    out = F.grid_sample(torch.from_numpy(img / 255.).permute(2, 0, 1).unsqueeze(0).float().cuda(), lbl.cuda(),
+    out = F.grid_sample(torch.from_numpy(img / 255.).permute(2, 0, 1).unsqueeze(0).float().to(device), lbl.to(device),
                         align_corners=True)
     img_geo = ((out[0] * 255).permute(1, 2, 0).cpu().numpy()).astype(np.uint8)
-    cv2.imwrite(os.path.join(dewarp_path, filename.rsplit('/', 1)[-1]), img_geo[:, :, ::-1])  # save
+    save_filename = os.path.basename(filename)
+    cv2.imwrite(os.path.join(dewarp_path, save_filename), img_geo[:, :, ::-1])  # save
 
     # -----------------------------------------------------
     pred_h = pred_h_lst[-1].squeeze(0).cpu().numpy().transpose(1, 2, 0)
     pred_h = (pred_h > 0.2)
     pred_h = (pred_h * 255.).astype(np.uint8)
-    cv2.imwrite(os.path.join(pred_h_path, filename.rsplit('/', 1)[-1]),
+    cv2.imwrite(os.path.join(pred_h_path, save_filename),
                 cv2.resize(pred_h, (img_w, img_h)))  # save
 
     pred_v = pred_v_lst[-1].squeeze(0).cpu().numpy().transpose(1, 2, 0)
     pred_v = (pred_v > 0.2)
     pred_v = (pred_v * 255.).astype(np.uint8)
-    cv2.imwrite(os.path.join(pred_v_path, filename.rsplit('/', 1)[-1]),
+    cv2.imwrite(os.path.join(pred_v_path, save_filename),
                 cv2.resize(pred_v, (img_w, img_h)))  # save
 
     return ps_time
@@ -136,12 +144,16 @@ if __name__ == '__main__':
     start = time.time()
     img_num = 0.0
 
-    for file in glob.glob(img_path + "/*"):
+    for file in glob.glob(os.path.join(img_path, "*")):
+        if not os.path.isfile(file):
+            continue
         print("file: ", file)
-        filename = (save_path + "/" + file[file.rindex("/") + 1:file.rindex(".")] + ".png")
+        base_name = os.path.splitext(os.path.basename(file))[0] + ".png"
+        filename = os.path.join(save_path, base_name)
 
         total_time += predict(file, save_path, filename)
         print("total_time: ", total_time)
         img_num += 1
-    print('FPS: %.1f' % (1.0 / (total_time / img_num)))
+    if img_num > 0:
+        print('FPS: %.1f' % (1.0 / (total_time / img_num)))
 

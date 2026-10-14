@@ -1,0 +1,53 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+loader/__pycache__/
+model_utils/__pycache__/
+networks/__pycache__/
+
+# Large model weights (>100MB cannot push to GitHub)
+*.pt
+*.pth
+*.bin
+*.onnx
+model_weight.pt
+
+# Slides, PDFs, Text notes and Reports
+*.pptx
+*.pdf
+*.txt
+*.json
+BAO_CAO_*.md
+
+# Temporary data and test outputs
+scratch/
+paper_extracted_images/
+paper_renders/
+doctr_pipeline_pics/
+benchmark_results/
+results_test/
+sample_51_1_tensors.npz
+
+# Temporary / Generated Images
+test_crop_*.png
+slide_8_*.png
+debug_*.png
+images/pipeline_stages/
+images/d2dewarp_only_benchmark/
+images/doctr_*
+images/slide_*
+
+# Temporary scripts for slide generation & presentation tasks
+build_full_presentation.py
+generate_d2dewarp_slides.py
+generate_pipeline_stage_images.py
+create_slide_37_images.py
+create_d2dewarp_only_comparisons.py
+update_formulas.py
+update_metrics_slides.py
+update_pipeline_slides.py
+apply_user_updates.py
+inspect_formatting.py
+inspect_presentation.py
+inspect_runs.py
