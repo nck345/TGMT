@@ -40,7 +40,10 @@ def get_args():
     parser.add_argument('--model_path',
                         default='./model_weight.pt',
                         help='model path')
-    parser.add_argument('--img_path', default='c:/Users/khiem_ssxdm6v/Documents/GitHub/DocTr-Plus/data benchmark/crop/crop',
+    base_dir = os.path.dirname(os.path.abspath(__file__))
+    default_img_path = os.path.join(os.path.dirname(base_dir), 'DocTr-Plus', 'data benchmark', 'crop', 'crop')
+    parser.add_argument('--img_path',
+                        default=default_img_path if os.path.exists(default_img_path) else './demo',
                         help='image path or path to folder containing images (set multi as true)')
     parser.add_argument('--save_path', default='./infer/DocUNet', help='save path')
 

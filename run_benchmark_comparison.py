@@ -7,13 +7,18 @@ import numpy as np
 from PIL import Image
 import torch
 import torch.nn.functional as F
+import argparse
 from skimage.metrics import structural_similarity as ssim
 from rapidocr_onnxruntime import RapidOCR
 from rapidfuzz.distance import Levenshtein
 
 sys.stdout.reconfigure(encoding='utf-8', errors='replace', line_buffering=True)
 sys.stderr.reconfigure(encoding='utf-8', errors='replace', line_buffering=True)
-sys.path.insert(0, r"c:\Users\khiem_ssxdm6v\Documents\GitHub\D2Dewarp")
+
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+if BASE_DIR not in sys.path:
+    sys.path.insert(0, BASE_DIR)
+
 from networks.d2dewarp_model import D2DewarpModel
 from loader.dataset_doc3d_grid_HV import gradient
 
@@ -65,12 +70,28 @@ def calc_metrics_pair(pred_img_path, gt_img_path):
         "len_gt": len(gt_clean)
     }
 
+def get_args():
+    parser = argparse.ArgumentParser(description="D2Dewarp vs DocTr-Plus Benchmark Comparison")
+    parser.add_argument('--model_path', default=os.path.join(BASE_DIR, "model_weight.pt"),
+                        help="Path to D2Dewarp model weights")
+    parser.add_argument('--crop_dir', default=os.path.join(os.path.dirname(BASE_DIR), "DocTr-Plus", "data benchmark", "crop", "crop"),
+                        help="Path to distorted crop images")
+    parser.add_argument('--scan_dir', default=os.path.join(os.path.dirname(BASE_DIR), "DocTr-Plus", "data benchmark", "scan", "scan"),
+                        help="Path to ground truth scan images")
+    parser.add_argument('--doctr_dir', default=os.path.join(os.path.dirname(BASE_DIR), "DocTr-Plus", "results"),
+                        help="Path to DocTr results")
+    parser.add_argument('--save_path', default=os.path.join(BASE_DIR, "benchmark_results"),
+                        help="Path to save benchmark comparison outputs")
+    return parser.parse_args()
+
+
 def main():
+    args = get_args()
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     print(f"=== Initializing D2Dewarp on {device} ===", flush=True)
     
     input_size = 448
-    model_path = r"c:\Users\khiem_ssxdm6v\Documents\GitHub\D2Dewarp\model_weight.pt"
+    model_path = args.model_path
     recti_model = D2DewarpModel(img_size=input_size, in_chans=4, hv_out_chans=1, d_model=448)
     
     state_dict = torch.load(model_path, map_location=device, weights_only=False)
@@ -82,11 +103,11 @@ def main():
     print("D2Dewarp model loaded successfully!", flush=True)
     
     # Directories
-    crop_dir = r"c:\Users\khiem_ssxdm6v\Documents\GitHub\DocTr-Plus\data benchmark\crop\crop"
-    scan_dir = r"c:\Users\khiem_ssxdm6v\Documents\GitHub\DocTr-Plus\data benchmark\scan\scan"
-    doctr_dir = r"c:\Users\khiem_ssxdm6v\Documents\GitHub\DocTr-Plus\results"
+    crop_dir = args.crop_dir
+    scan_dir = args.scan_dir
+    doctr_dir = args.doctr_dir
     
-    save_d2_root = r"c:\Users\khiem_ssxdm6v\Documents\GitHub\D2Dewarp\benchmark_results"
+    save_d2_root = args.save_path
     dewarp_dir = os.path.join(save_d2_root, "dewarp")
     pred_h_dir = os.path.join(save_d2_root, "pred_h")
     pred_v_dir = os.path.join(save_d2_root, "pred_v")
