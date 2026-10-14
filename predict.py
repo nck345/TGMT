@@ -44,6 +44,9 @@ def get_args():
                         help='image path or path to folder containing images (set multi as true)')
     parser.add_argument('--save_path', default='./infer/DocUNet', help='save path')
 
+    parser.add_argument('--plus', type=str2bool, default=True,
+                        help='Enable D2Dewarp+ enhancements: adaptive white-balancing and contour boundary cropping')
+
     """ Model """
     parser.add_argument('--hv_out_chans', type=int, default=1, help='h line and v line output channels')
     parser.add_argument('--d_model', type=int, default=448, help='last layer dim in UNet and all layers in attention')
@@ -74,10 +77,13 @@ def predict(img_path, save_path, filename):
     assert os.path.exists(save_path), 'Incorrect Save Path'
 
     dewarp_path = os.path.join(save_path, 'dewarp/')
+    dewarp_plus_path = os.path.join(save_path, 'dewarp_plus/')
     pred_h_path = os.path.join(save_path, 'pred_h/')
     pred_v_path = os.path.join(save_path, 'pred_v/')
     if not os.path.exists(dewarp_path):
         os.makedirs(dewarp_path)
+    if parser.plus and not os.path.exists(dewarp_plus_path):
+        os.makedirs(dewarp_plus_path)
     if not os.path.exists(pred_h_path):
         os.makedirs(pred_h_path)
     if not os.path.exists(pred_v_path):
@@ -118,7 +124,16 @@ def predict(img_path, save_path, filename):
                         align_corners=True)
     img_geo = ((out[0] * 255).permute(1, 2, 0).cpu().numpy()).astype(np.uint8)
     save_filename = os.path.basename(filename)
-    cv2.imwrite(os.path.join(dewarp_path, save_filename), img_geo[:, :, ::-1])  # save
+    bgr_geo = img_geo[:, :, ::-1]
+    cv2.imwrite(os.path.join(dewarp_path, save_filename), bgr_geo)  # save baseline
+
+    if parser.plus:
+        try:
+            from model_utils.d2dewarp_plus import apply_d2dewarp_plus
+            img_plus = apply_d2dewarp_plus(bgr_geo)
+            cv2.imwrite(os.path.join(dewarp_plus_path, save_filename), img_plus)  # save D2Dewarp+
+        except Exception as e:
+            print(f"D2Dewarp+ postprocessing error: {e}")
 
     # -----------------------------------------------------
     pred_h = pred_h_lst[-1].squeeze(0).cpu().numpy().transpose(1, 2, 0)
