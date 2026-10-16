@@ -52,3 +52,4 @@ apply_user_updates.py
 inspect_formatting.py
 inspect_presentation.py
 inspect_runs.py
+populate_slides.py
