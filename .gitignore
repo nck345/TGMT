@@ -17,6 +17,7 @@ model_weight.pt
 *.pptx
 *.pdf
 *.txt
+!requirements.txt
 *.json
 BAO_CAO_*.md
 

@@ -2,6 +2,10 @@
 
 The code for "D2Dewarp: Dual Dimensions Geometric Representation Learning Based Document Image Dewarping", CVPR 2026.
 
+> 📖 **Tài liệu hướng dẫn & Báo cáo kỹ thuật:**
+> - [Hướng dẫn cài đặt, chạy suy luận & chạy file đánh giá](HUONG_DAN_SU_DUNG.md)
+> - [Mô tả chi tiết giải pháp cải tiến D2Dewarp+ & Bảng đối sánh chỉ số thực nghiệm](MO_TA_CAI_TIEN_D2DEWARP_PLUS.md)
+
 <div align=center>
 <img width="650" height="350" src="https://github.com/xiaomore/D2Dewarp/blob/main/images/model1.jpeg" alt="Model Overview" title="Model Overview"/>
 <img width="330" height="450" src="https://github.com/xiaomore/D2Dewarp/blob/main/images/model2.jpeg" alt="HV Fusion Module"  title="HV Fusion Module"/>
